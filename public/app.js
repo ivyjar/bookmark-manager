@@ -7,7 +7,9 @@ const urlInput = document.getElementById('url');
 const formError = document.getElementById('form-error');
 const list = document.getElementById('bookmark-list');
 const emptyState = document.getElementById('empty-state');
+const noResults = document.getElementById('no-results');
 const count = document.getElementById('count');
+const searchInput = document.getElementById('search');
 
 let bookmarks = loadBookmarks();
 
@@ -50,11 +52,16 @@ function showError(message) {
   formError.textContent = message;
 }
 
-// Redraw the whole list from the bookmarks array
+// Redraw the list from the bookmarks array, showing only titles that match the search box
 function render() {
   list.innerHTML = '';
 
-  for (const bookmark of bookmarks) {
+  const query = searchInput.value.trim().toLowerCase();
+  const visible = query
+    ? bookmarks.filter((bookmark) => bookmark.title.toLowerCase().includes(query))
+    : bookmarks;
+
+  for (const bookmark of visible) {
     const item = document.createElement('li');
     item.className = 'bookmark card';
 
@@ -86,7 +93,11 @@ function render() {
 
   count.textContent = bookmarks.length;
   emptyState.hidden = bookmarks.length > 0;
+  noResults.hidden = bookmarks.length === 0 || visible.length > 0;
 }
+
+// Filter the list on every keystroke in the search box
+searchInput.addEventListener('input', render);
 
 function addBookmark(title, url) {
   // Newest first

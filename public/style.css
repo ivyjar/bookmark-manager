@@ -134,6 +134,12 @@ h2 { font-size: 1.1rem; }
   color: var(--accent);
 }
 
+.search {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
 .bookmark-list {
   list-style: none;
   display: grid;
