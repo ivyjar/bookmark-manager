@@ -74,6 +74,11 @@ label {
   font-weight: 600;
 }
 
+.optional {
+  font-weight: 400;
+  color: var(--muted);
+}
+
 input {
   font: inherit;
   padding: 10px 12px;
@@ -179,8 +184,15 @@ h2 { font-size: 1.1rem; }
   white-space: nowrap;
 }
 
-.delete-button {
+.bookmark-actions {
   flex-shrink: 0;
+  display: flex;
+  gap: 6px;
+}
+
+.edit-button,
+.cancel-button,
+.delete-button {
   font: inherit;
   font-size: 0.85rem;
   font-weight: 500;
@@ -197,6 +209,45 @@ h2 { font-size: 1.1rem; }
   background: var(--danger-soft);
   border-color: var(--danger);
   color: var(--danger);
+}
+
+.edit-button:hover,
+.cancel-button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Category groups */
+.category-group + .category-group { margin-top: 20px; }
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.category-header h3 {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+/* A bookmark being edited */
+.bookmark.editing {
+  display: block;
+  padding: 16px;
+}
+
+.edit-form {
+  padding: 0;
+  gap: 12px;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .empty-state {

@@ -23,6 +23,10 @@
         <label for="url">URL</label>
         <input id="url" name="url" type="text" inputmode="url" placeholder="e.g. developer.mozilla.org" autocomplete="off" required>
       </div>
+      <div class="field">
+        <label for="category">Category <span class="optional">(optional)</span></label>
+        <input id="category" name="category" type="text" list="category-options" placeholder="e.g. Learning" autocomplete="off">
+      </div>
       <p id="form-error" class="form-error" role="alert"></p>
       <button type="submit" class="add-button">Add bookmark</button>
     </form>
@@ -33,12 +37,16 @@
         <span id="count" class="count">0</span>
       </div>
       <input id="search" class="search" type="search" placeholder="Search by title" aria-label="Search bookmarks by title" autocomplete="off">
-      <ul id="bookmark-list" class="bookmark-list"></ul>
+      <div id="bookmark-groups"></div>
       <p id="empty-state" class="empty-state">No bookmarks yet. Add your first one above.</p>
       <p id="no-results" class="empty-state" hidden>No bookmarks match your search.</p>
     </section>
+
+    <!-- Categories already in use, suggested while typing in any category field -->
+    <datalist id="category-options"></datalist>
   </main>
 
+  <script src="/vendor/validator.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
