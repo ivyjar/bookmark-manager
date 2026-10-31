@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bookmarks</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <main class="container">
+    <header>
+      <h1>Bookmarks</h1>
+      <p class="subtitle">Save the links you want to come back to.</p>
+    </header>
+
+    <form id="bookmark-form" class="card" novalidate>
+      <div class="field">
+        <label for="title">Title</label>
+        <input id="title" name="title" type="text" placeholder="e.g. MDN Web Docs" autocomplete="off" required>
+      </div>
+      <div class="field">
+        <label for="url">URL</label>
+        <input id="url" name="url" type="text" inputmode="url" placeholder="e.g. developer.mozilla.org" autocomplete="off" required>
+      </div>
+      <p id="form-error" class="form-error" role="alert"></p>
+      <button type="submit" class="add-button">Add bookmark</button>
+    </form>
+
+    <section class="list-section">
+      <div class="list-header">
+        <h2>Saved</h2>
+        <span id="count" class="count">0</span>
+      </div>
+      <ul id="bookmark-list" class="bookmark-list"></ul>
+      <p id="empty-state" class="empty-state">No bookmarks yet. Add your first one above.</p>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
