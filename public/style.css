@@ -231,6 +231,8 @@ h2 { font-size: 1.1rem; }
 .category-header h3 {
   font-size: 0.95rem;
   color: var(--muted);
+  min-width: 0;
+  overflow-wrap: anywhere; /* long category names wrap instead of overflowing */
 }
 
 /* A bookmark being edited */

@@ -11,8 +11,11 @@ const groupsContainer = document.getElementById('bookmark-groups');
 const categoryOptions = document.getElementById('category-options');
 const emptyState = document.getElementById('empty-state');
 const noResults = document.getElementById('no-results');
-const count = document.getElementById('count');
+const totalBadge = document.getElementById('count');
 const searchInput = document.getElementById('search');
+
+// Set when the saved data couldn't be read, so it is never overwritten (and lost) by a save
+let storageUnreadable = false;
 
 let bookmarks = loadBookmarks();
 
@@ -22,28 +25,49 @@ let editingId = null;
 let editDraft = null;
 
 // Read saved bookmarks from localStorage (empty list if none, or if storage is unavailable).
-// Bookmarks saved before categories existed are put in the default category.
+// Damaged entries (not an object, or missing a title or URL) are skipped instead of
+// failing the whole load. Bookmarks saved before categories existed get the default category.
 function loadBookmarks() {
+  let saved;
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (!Array.isArray(saved)) return [];
-    return saved.map((bookmark) => ({
+    saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  } catch (e) {
+    storageUnreadable = true;
+    return [];
+  }
+  if (saved === null) return [];
+  if (!Array.isArray(saved)) {
+    storageUnreadable = true;
+    return [];
+  }
+  return saved
+    .filter((bookmark) => bookmark && typeof bookmark === 'object'
+      && typeof bookmark.title === 'string' && typeof bookmark.url === 'string')
+    .map((bookmark) => ({
       ...bookmark,
+      id: typeof bookmark.id === 'string' && bookmark.id ? bookmark.id : newId(),
       category: typeof bookmark.category === 'string' && bookmark.category.trim()
         ? bookmark.category.trim()
         : DEFAULT_CATEGORY,
     }));
+}
+
+// Write the bookmarks to localStorage. Returns an error message if that failed, or null.
+function saveBookmarks() {
+  if (storageUnreadable) {
+    return 'Could not save: your saved bookmarks could not be read, so saving now would erase them.';
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(bookmarks));
+    return null;
   } catch (e) {
-    return [];
+    return 'Could not save. Your browser may be blocking storage for this page.';
   }
 }
 
-function saveBookmarks() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bookmarks));
-  } catch (e) {
-    showError('Could not save. Your browser may be blocking storage for this page.');
-  }
+// A unique ID for a new bookmark
+function newId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
 // How validator.js (the open-source library loaded before this file) checks web addresses:
@@ -61,7 +85,8 @@ const URL_RULES = {
 function normalizeUrl(input) {
   let text = input.trim();
   if (!text) return null;
-  if (!/^[a-z][a-z0-9+.-]*:/i.test(text)) text = 'https://' + text;
+  // Only text starting with "scheme://" already has one; "example.com:8080" is a host and port
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) text = 'https://' + text;
   if (!validator.isURL(text, URL_RULES)) return null;
   // Write the address in the browser's standard form, so the same link is always stored the same way
   try {
@@ -147,7 +172,7 @@ function render() {
     groupsContainer.append(section);
   }
 
-  count.textContent = bookmarks.length;
+  totalBadge.textContent = bookmarks.length;
   emptyState.hidden = bookmarks.length > 0;
   noResults.hidden = bookmarks.length === 0 || visible.length > 0;
 
@@ -176,9 +201,9 @@ function renderBookmark(bookmark) {
   link.rel = 'noopener noreferrer';
   link.textContent = bookmark.title;
 
-  const url = document.createElement('span');
-  url.className = 'bookmark-url';
-  url.textContent = bookmark.url;
+  const urlText = document.createElement('span');
+  urlText.className = 'bookmark-url';
+  urlText.textContent = bookmark.url;
 
   const actions = document.createElement('div');
   actions.className = 'bookmark-actions';
@@ -198,7 +223,7 @@ function renderBookmark(bookmark) {
   deleteButton.setAttribute('aria-label', `Delete ${bookmark.title}`);
   deleteButton.addEventListener('click', () => deleteBookmark(bookmark.id));
 
-  info.append(link, url);
+  info.append(link, urlText);
   actions.append(editButton, deleteButton);
   item.append(info, actions);
   return item;
@@ -314,29 +339,65 @@ function saveEdit() {
   }
 
   const bookmark = bookmarks.find((b) => b.id === editingId);
+  if (!bookmark) {
+    cancelEdit();
+    return;
+  }
+  const before = { title: bookmark.title, url: bookmark.url, category: bookmark.category };
   bookmark.title = title;
   bookmark.url = url;
   bookmark.category = resolveCategory(editDraft.category, editingId);
 
+  // If it couldn't be saved, undo the change and keep the form open with the reason
+  const saveError = saveBookmarks();
+  if (saveError) {
+    Object.assign(bookmark, before);
+    editDraft.error = saveError;
+    render();
+    document.getElementById('edit-title').focus();
+    return;
+  }
+
   const id = editingId;
   editingId = null;
   editDraft = null;
-  saveBookmarks();
   render();
   focusEditButton(id);
 }
 
+// Add a bookmark to the top of the list. Returns an error message if it couldn't be saved
+// (the bookmark is then left out, so the page never shows something that isn't stored), or null.
 function addBookmark(title, url, category) {
-  // Newest first
-  bookmarks.unshift({ id: Date.now().toString(36) + Math.random().toString(36).slice(2), title, url, category });
-  saveBookmarks();
+  const bookmark = { id: newId(), title, url, category };
+  bookmarks.unshift(bookmark);
+  const saveError = saveBookmarks();
+  if (saveError) bookmarks = bookmarks.filter((b) => b !== bookmark);
   render();
+  return saveError;
 }
 
+// Delete a bookmark, then move keyboard focus to the bookmark that took its place (or the
+// one above it, or the search box if none are left), so keyboard users keep their place.
 function deleteBookmark(id) {
+  const editButtons = [...groupsContainer.querySelectorAll('.edit-button')];
+  const index = editButtons.findIndex((button) => button.dataset.id === id);
+  const neighbour = editButtons[index + 1] || editButtons[index - 1];
+  const nextId = neighbour ? neighbour.dataset.id : null;
+
+  const before = bookmarks;
   bookmarks = bookmarks.filter((bookmark) => bookmark.id !== id);
-  saveBookmarks();
+  const saveError = saveBookmarks();
+  if (saveError) {
+    bookmarks = before;
+    showError(saveError);
+    render();
+    focusEditButton(id);
+    return;
+  }
+
   render();
+  if (nextId) focusEditButton(nextId);
+  else searchInput.focus();
 }
 
 form.addEventListener('submit', (event) => {
@@ -352,7 +413,11 @@ form.addEventListener('submit', (event) => {
     return;
   }
 
-  addBookmark(title, url, resolveCategory(categoryInput.value));
+  const saveError = addBookmark(title, url, resolveCategory(categoryInput.value));
+  if (saveError) {
+    showError(saveError);
+    return;
+  }
   form.reset();
   titleInput.focus();
 });
@@ -361,3 +426,6 @@ form.addEventListener('submit', (event) => {
 searchInput.addEventListener('input', render);
 
 render();
+if (storageUnreadable) {
+  showError('Your saved bookmarks could not be read, so changes won\'t be saved until that is fixed.');
+}
